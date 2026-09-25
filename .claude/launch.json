@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "SILYBENCH_DATA_DIR=../silybench-data/derived npm run dev -- --port 3100"],
+      "port": 3100
+    }
+  ]
+}
