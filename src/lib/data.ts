@@ -5,7 +5,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { CostData, RunResult } from "./types";
+import type { CostData, Experiment, RunResult } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -43,4 +43,30 @@ export function loadCost(): CostData {
     };
   }
   return JSON.parse(fs.readFileSync(file, "utf8")) as CostData;
+}
+
+export function loadExperiments(): Experiment[] {
+  const dir = path.join(DATA_DIR, "experiments");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((id) => fs.existsSync(path.join(dir, id, "experiment.json")))
+    .map((id) => JSON.parse(fs.readFileSync(path.join(dir, id, "experiment.json"), "utf8")) as Experiment)
+    .sort((a, b) => b.id.localeCompare(a.id));
+}
+
+export function loadExperiment(id: string): Experiment | undefined {
+  return loadExperiments().find((e) => e.id === id);
+}
+
+/** Cost at the prices of the day the experiment ran (frozen), if recorded. */
+export function loadCostAtRun(id: string): CostData | null {
+  const file = path.join(DATA_DIR, "experiments", id, "cost_at_run.json");
+  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf8")) as CostData) : null;
+}
+
+/** Headline data comes only from published experiments (pipeline runs are kept, not featured). */
+export function publishedRuns(): RunResult[] {
+  const published = new Set(loadExperiments().filter((e) => e.status === "published").map((e) => e.id));
+  return loadRuns().filter((r) => r.experiment && published.has(r.experiment));
 }

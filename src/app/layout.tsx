@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { Sidebar, THEME_SCRIPT } from "@/components/Sidebar";
-import { loadRuns } from "@/lib/data";
+import { publishedRuns } from "@/lib/data";
 
 import "./globals.css";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  const runs = loadRuns();
+  const runs = publishedRuns();
   const uniq = (xs: (string | null | undefined)[]) => Array.from(new Set(xs.filter(Boolean))) as string[];
   const stack = [
     ...uniq(runs.map((r) => r.hardware.gpu_type)),

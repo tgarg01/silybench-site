@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { fmtCompact, fmtMoney, shortModel, workloadLabel, workloadOrder } from "@/lib/cost";
+import { apiSide, fmtCompact, fmtMoney, shortModel, workloadLabel, workloadOrder } from "@/lib/cost";
+import { useLivePrices } from "@/lib/livePrices";
 import type { CostData } from "@/lib/types";
 
 import { Card, TH } from "./Card";
+import { PriceBadge } from "./PriceBadge";
 import { CostChart, type HostedLine } from "./CostChart";
 
 function Tile({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: "good" }) {
@@ -54,12 +56,14 @@ export function CostOverview({ cost }: { cost: CostData }) {
     workloads.includes("chat-128-128") ? "chat-128-128" : (workloads[0] ?? ""),
   );
   const comp = comps.find((c) => c.workload === workload) ?? comps[0];
+  const prices = useLivePrices(cost, models);
+  const expId = comp ? cost.deployments.find((d) => d.run_id === comp.hosted.run_id)?.experiment : null;
 
   // Per precision: the cheapest offer for that deployment (the React Compiler memoizes this).
   const hosted: HostedLine[] = !comp
     ? []
     : cost.deployments
-      .filter((d) => d.model === comp.model && d.workload === comp.workload)
+      .filter((d) => d.model === comp.model && d.workload === comp.workload && d.experiment === expId)
       .sort((a, b) => a.precision.localeCompare(b.precision))
       .flatMap((d) => {
         const offer = [...d.offers].sort((a, b) => a.usd_per_hour - b.usd_per_hour)[0];
@@ -67,7 +71,8 @@ export function CostOverview({ cost }: { cost: CostData }) {
           ? [{ label: `${d.gpu_count}× ${d.gpu_type} ${d.precision.toUpperCase()} · ${offer.provider} $${offer.usd_per_hour.toFixed(2)}/h`, dep: d, offer }]
           : [];
       });
-  const apis = comp ? cost.api.filter((a) => a.model === comp.model && a.workload === comp.workload) : [];
+  const side = comp ? apiSide(comp, prices.offers) : null;
+  const apis = side?.rows ?? [];
 
   if (!comp) {
     return <Card title="No cost data yet">Publish a run to silybench-data to see comparisons.</Card>;
@@ -81,6 +86,7 @@ export function CostOverview({ cost }: { cost: CostData }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
+        <PriceBadge live={prices.live} fetchedAt={prices.fetchedAt} />
         {models.length > 1 && (
           <Segmented label="Model" value={model} onChange={setModel} options={models.map((m) => ({ value: m, label: shortModel(m) }))} />
         )}
@@ -100,21 +106,21 @@ export function CostOverview({ cost }: { cost: CostData }) {
         />
         <Tile
           label="Cheapest API, per 1M requests"
-          value={comp.api_cheapest ? fmtMoney(perM(comp.api_cheapest.usd_per_1k_requests)) : "–"}
-          note={comp.api_cheapest ? `${comp.api_cheapest.provider}, $${comp.api_cheapest.usd_per_1m_input}/1M in, $${comp.api_cheapest.usd_per_1m_output}/1M out` : "no API lists this model"}
+          value={side?.cheapest ? fmtMoney(perM(side.cheapest.usd_per_1k_requests)) : "–"}
+          note={side?.cheapest ? `${side.cheapest.provider}${side.cheapest.quantization ? ` (${side.cheapest.quantization})` : ""}, $${+side.cheapest.usd_per_1m_input.toFixed(4)}/1M in, $${+side.cheapest.usd_per_1m_output.toFixed(4)}/1M out` : "no API lists this model"}
         />
         <Tile
           label="Saving at full load"
-          value={comp.savings_at_capacity != null ? `${Math.round(comp.savings_at_capacity * 100)}%` : "–"}
-          tone={comp.savings_at_capacity != null && comp.savings_at_capacity > 0 ? "good" : undefined}
+          value={side?.savings != null ? `${Math.round(side.savings * 100)}%` : "–"}
+          tone={side?.savings != null && side.savings > 0 ? "good" : undefined}
           note="Self-hosted vs cheapest API, when the GPU runs at its measured capacity"
         />
         <Tile
           label="Break-even volume"
-          value={comp.breakeven_requests_per_day != null ? `${fmtCompact(comp.breakeven_requests_per_day)}/day` : "–"}
+          value={side?.breakevenRequestsPerDay != null ? `${fmtCompact(side.breakevenRequestsPerDay)}/day` : "–"}
           note={
-            comp.breakeven_utilization != null
-              ? `Above this, one always-on GPU beats the API. That's ${Math.round(comp.breakeven_utilization * 100)}% of its capacity.`
+            side?.breakevenUtilization != null
+              ? `Above this, one always-on GPU beats the API. That's ${Math.round(side.breakevenUtilization * 100)}% of its capacity.`
               : undefined
           }
         />
@@ -141,7 +147,9 @@ export function CostOverview({ cost }: { cost: CostData }) {
               </tr>
             </thead>
             <tbody>
-              {comps.map((c) => (
+              {comps.map((c) => {
+                const cs = apiSide(c, prices.offers);
+                return (
                 <tr key={c.workload} className="border-b border-line last:border-0">
                   <td className="py-2.5 pl-5">
                     <div className="font-medium text-ink">{workloadLabel(c.workload)}</div>
@@ -152,16 +160,17 @@ export function CostOverview({ cost }: { cost: CostData }) {
                   </td>
                   <td className="px-3 text-right">{fmtMoney(perM(c.hosted.usd_per_1k_requests))}</td>
                   <td className="px-3 text-right">
-                    {c.api_cheapest ? fmtMoney(perM(c.api_cheapest.usd_per_1k_requests)) : "–"}
+                    {cs.cheapest ? fmtMoney(perM(cs.cheapest.usd_per_1k_requests)) : "–"}
                   </td>
                   <td className="px-3 text-right font-medium text-good">
-                    {c.savings_at_capacity != null ? `${Math.round(c.savings_at_capacity * 100)}%` : "–"}
+                    {cs.savings != null ? `${Math.round(cs.savings * 100)}%` : "–"}
                   </td>
                   <td className="pr-5 text-right text-ink-2">
-                    {c.breakeven_requests_per_day != null ? `${fmtCompact(c.breakeven_requests_per_day)}/day` : "–"}
+                    {cs.breakevenRequestsPerDay != null ? `${fmtCompact(cs.breakevenRequestsPerDay)}/day` : "–"}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

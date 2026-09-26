@@ -29,6 +29,7 @@ const NAV_GROUPS = [
   {
     title: "Benchmarks",
     items: [
+      { href: "/experiments/", label: "Experiments", icon: <I d="M6 2v4.5L2.5 13h11L10 6.5V2M5 2h6" /> },
       { href: "/benchmarks/", label: "Performance", icon: <I d="M2 2.5v11h12M4.5 10l3-3.5 2 2L13 4" /> },
       { href: "/runs/", label: "Runs", icon: <I d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5" /> },
     ],

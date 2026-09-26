@@ -1,7 +1,7 @@
 // Client-safe cost arithmetic over derived/cost.json. The heavy lifting (throughput at SLO
 // capacity, $ per request per offer) is done by gpubench/cost.py in silybench-data; here we only
 // size a deployment for a traffic level and compare it with per-token API pricing.
-import type { ApiOffer, CostData, Deployment, PricedOffer } from "./types";
+import type { ApiOffer, ApiRow, Comparison, CostData, Deployment, PricedOffer } from "./types";
 
 export const HOURS_PER_MONTH = 730;
 export const DAYS_PER_MONTH = HOURS_PER_MONTH / 24;
@@ -141,4 +141,50 @@ export function fmtMoney(v: number | null | undefined): string {
 export function fmtCompact(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "–";
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+}
+
+/** API side of a comparison, recomputed from (possibly live) API offers. */
+export interface ApiSide {
+  cheapest: ApiRow | null;
+  medianPerK: number | null;
+  savings: number | null; // at the self-hosted setup's SLO capacity
+  breakevenRequestsPerDay: number | null;
+  breakevenUtilization: number | null;
+  rows: ApiRow[];
+}
+
+export function apiRowsFor(offers: ApiOffer[], model: string, workload: string, inTok: number, outTok: number): ApiRow[] {
+  return offers
+    .filter((o) => o.model === model)
+    .map((o) => ({
+      model,
+      workload,
+      provider: o.provider,
+      quantization: o.quantization,
+      usd_per_1m_input: o.usd_per_1m_input,
+      usd_per_1m_output: o.usd_per_1m_output,
+      usd_per_1k_requests: apiUsdPerRequest(o, inTok, outTok) * 1e3,
+    }))
+    .sort((a, b) => a.usd_per_1k_requests - b.usd_per_1k_requests);
+}
+
+export function apiSide(comp: Comparison, offers: ApiOffer[]): ApiSide {
+  const rows = apiRowsFor(offers, comp.model, comp.workload, comp.input_len, comp.output_len);
+  if (!rows.length) {
+    return { cheapest: null, medianPerK: null, savings: null, breakevenRequestsPerDay: null, breakevenUtilization: null, rows };
+  }
+  const cheapest = rows[0];
+  const sorted = rows.map((r) => r.usd_per_1k_requests);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const perReq = cheapest.usd_per_1k_requests / 1e3;
+  const breakeven = (comp.hosted.usd_per_hour * 24) / perReq;
+  return {
+    cheapest,
+    medianPerK: median,
+    savings: 1 - comp.hosted.usd_per_1k_requests / cheapest.usd_per_1k_requests,
+    breakevenRequestsPerDay: breakeven,
+    breakevenUtilization: breakeven / comp.hosted.requests_per_day_at_capacity,
+    rows,
+  };
 }

@@ -13,7 +13,10 @@ import {
   type Traffic,
   workloadLabel,
 } from "@/lib/cost";
+import { useLivePrices } from "@/lib/livePrices";
 import type { CostData } from "@/lib/types";
+
+import { PriceBadge } from "./PriceBadge";
 
 import { Card, TH } from "./Card";
 import { CostChart } from "./CostChart";
@@ -81,9 +84,10 @@ export function Calculator({ cost }: { cost: CostData }) {
   const [includeSpot, setIncludeSpot] = useState(false);
   const set = (k: keyof Traffic) => (v: number) => setT((prev) => ({ ...prev, [k]: v }));
 
+  const prices = useLivePrices(cost, models);
   const { workload, options } = useMemo(
-    () => allOptions(cost, model, t, { precisions: allowed, includeSpot }),
-    [cost, model, t, allowed, includeSpot],
+    () => allOptions({ ...cost, api_offers: prices.offers }, model, t, { precisions: allowed, includeSpot }),
+    [cost, prices.offers, model, t, allowed, includeSpot],
   );
   const bestHosted = options.find((o) => o.kind === "hosted");
   const bestApi = options.find((o) => o.kind === "api");
@@ -184,6 +188,7 @@ export function Calculator({ cost }: { cost: CostData }) {
       </Card>
 
       <div className="min-w-0 space-y-6">
+        <PriceBadge live={prices.live} fetchedAt={prices.fetchedAt} />
         <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
             <div className="text-sm text-ink-2">Cheapest self-hosted</div>
