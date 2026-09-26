@@ -143,11 +143,18 @@ export default async function ExperimentPage({ params }: PageProps<"/experiments
             </thead>
             <tbody>
               {exp.scenarios.map((s) => {
-                const ds = exp.datasets.find((d) => d.scenario === s.name);
+                const ds = exp.datasets.find((d) => d.scenario === s.name && d.kind !== "quality");
                 return (
                   <tr key={s.name} className="border-b border-line last:border-0">
                     <td className="py-2.5 pl-5">
-                      <div className="font-medium text-ink">{workloadLabel(s.name)}</div>
+                      <div className="font-medium text-ink">
+                        {workloadLabel(s.name)}
+                        {s.quality && (
+                          <span className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                            + quality suite
+                          </span>
+                        )}
+                      </div>
                       <div className="font-mono text-xs text-muted">{s.name}</div>
                     </td>
                     <td className="px-3">{s.input_len.toLocaleString()} → {s.output_len.toLocaleString()} tokens</td>
@@ -170,6 +177,14 @@ export default async function ExperimentPage({ params }: PageProps<"/experiments
             </tbody>
           </table>
         </div>
+        {exp.phases && exp.phases.length > 1 && (
+          <p className="mt-3 text-sm text-ink-2">
+            <strong className="text-ink">Run order:</strong>{" "}
+            {exp.phases
+              .map((ph, i) => `${i + 1}. ${ph.startsWith("--workload") ? workloadLabel(ph.split(" ")[1]) + " first (both precisions)" : "all other scenarios"}`)
+              .join("  →  ")}
+          </p>
+        )}
         {exp.datasets.map((d) => (
           <p key={d.name} className="mt-3 text-xs text-muted">
             <strong className="text-ink-2">{d.name}</strong>: {d.description} sha256 <span className="font-mono">{d.sha256.slice(0, 16)}…</span>{" "}
@@ -193,6 +208,38 @@ export default async function ExperimentPage({ params }: PageProps<"/experiments
             appear here as soon as the runs are merged into{" "}
             <a className="text-accent hover:underline" href={REPOS.data}>silybench-data</a>.
           </p>
+        </Card>
+      )}
+
+      {runs.some((r) => r.quality?.length) && (
+        <Card
+          title="Correctness of the long-context scenario"
+          subtitle="Performance runs force fixed-length answers, so correctness is measured separately on the same contexts (thinking off, greedy). Recall: exact-answer questions about tool outputs deep inside the 100k context. Tool-call rate: share of decision points where the model issued a tool call. These responses are the baseline every optimization is compared with."
+        >
+          <div className="-mx-5 overflow-x-auto">
+            <table className="tabular w-full min-w-[560px] text-sm">
+              <thead className="text-left">
+                <tr className="border-b border-line">
+                  <th className={`${TH} pl-5`}>Run</th>
+                  <th className={`${TH} text-right`}>Recall (contains)</th>
+                  <th className={`${TH} text-right`}>Recall (exact line)</th>
+                  <th className={`${TH} pr-5 text-right`}>Tool-call rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.flatMap((r) =>
+                  (r.quality ?? []).map((q) => (
+                    <tr key={r.run_id + q.workload} className="border-b border-line last:border-0">
+                      <td className="py-2 pl-5 font-medium">{r.model.precision.toUpperCase()} · {workloadLabel(q.workload)}</td>
+                      <td className="px-3 text-right">{q.recall_accuracy == null ? "–" : `${(q.recall_accuracy * 100).toFixed(0)}% of ${q.recall_n}`}</td>
+                      <td className="px-3 text-right">{q.recall_exact == null ? "–" : `${(q.recall_exact * 100).toFixed(0)}%`}</td>
+                      <td className="pr-5 text-right">{q.drift_tool_call_rate == null ? "–" : `${(q.drift_tool_call_rate * 100).toFixed(0)}% of ${q.drift_n}`}</td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 

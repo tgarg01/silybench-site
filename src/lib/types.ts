@@ -109,6 +109,7 @@ export interface RunResult {
   fingerprint?: Fingerprint | null;
   raw_assets?: RawAsset[];
   profiles?: Profile[];
+  quality?: QualityResult[];
   perf: PerfPoint[];
   capacity: CapacityResult[];
   accuracy: AccuracyResult[];
@@ -120,6 +121,17 @@ export interface RawAsset {
   sha256: string;
   bytes: number;
   contents: string;
+}
+
+export interface QualityResult {
+  workload: string;
+  dataset_sha256: string;
+  responses: string;
+  recall_n: number;
+  recall_accuracy: number | null;
+  recall_exact: number | null;
+  drift_n: number;
+  drift_tool_call_rate: number | null;
 }
 
 export interface Profile {
@@ -176,6 +188,7 @@ export interface ExperimentEnv {
 
 export interface ExperimentDataset {
   name: string;
+  kind?: string;
   scenario: string;
   description: string;
   source: string;
@@ -209,7 +222,9 @@ export interface Experiment {
     users: number[];
     repeats: number;
     slo: SLO;
+    quality?: boolean;
   }[];
+  phases?: string[];
 }
 
 // derived/cost.json (gpubench/cost.py)

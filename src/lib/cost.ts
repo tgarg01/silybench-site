@@ -7,6 +7,7 @@ export const HOURS_PER_MONTH = 730;
 export const DAYS_PER_MONTH = HOURS_PER_MONTH / 24;
 
 export const WORKLOAD_LABELS: Record<string, string> = {
+  "toolcall-100k-512": "Tool calling, 100k context",
   "chat-128-128": "Short chat",
   "prefill-1024-128": "RAG / long prompt, short answer",
   "decode-128-1024": "Short prompt, long answer",
