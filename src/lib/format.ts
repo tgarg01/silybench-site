@@ -1,8 +1,9 @@
+import { setupLabel } from "./cost";
 import type { CapacityResult, RunResult } from "./types";
 
 export function runLabel(r: RunResult): string {
   const model = r.model.hf_id.split("/").pop();
-  return `${model} · ${r.model.precision.toUpperCase()}`;
+  return `${model} · ${setupLabel(r.model.precision, r.model.variant)}`;
 }
 
 export function hardwareLabel(r: RunResult): string {

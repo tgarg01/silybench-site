@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRowsFor, fmtMoney, workloadLabel, workloadOrder } from "@/lib/cost";
+import { apiRowsFor, fmtMoney, setupLabel, workloadLabel, workloadOrder } from "@/lib/cost";
 import { useLivePrices } from "@/lib/livePrices";
 import type { CostData, Deployment, PricedOffer } from "@/lib/types";
 
@@ -63,7 +63,7 @@ export function ExperimentCost({ experiment, cost, atRun }: { experiment: string
                     <div className="text-xs text-muted">{input_len.toLocaleString()} in → {output_len} out</div>
                   </td>
                   <td className="px-3 text-ink-2">
-                    {today.dep.precision.toUpperCase()} · {today.offer.provider}
+                    {setupLabel(today.dep.precision, today.dep.variant)} · {today.offer.provider}
                     {today.offer.product ? ` (${today.offer.product})` : ""}
                   </td>
                   <td className="px-3 text-right font-medium">{fmtMoney(perM(today.offer.usd_per_1k_requests))}</td>

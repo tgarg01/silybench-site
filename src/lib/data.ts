@@ -26,7 +26,7 @@ export function loadRun(runId: string): RunResult | undefined {
 // Stable order (GPU, model, precision) so each run keeps its color across pages.
 function compareRuns(a: RunResult, b: RunResult): number {
   const key = (r: RunResult) =>
-    [r.hardware.gpu_type, r.hardware.gpu_count, r.model.hf_id, r.model.precision].join("|");
+    [r.hardware.gpu_type, r.hardware.gpu_count, r.model.hf_id, r.model.precision, r.model.variant ?? ""].join("|");
   return key(a).localeCompare(key(b), undefined, { numeric: true });
 }
 

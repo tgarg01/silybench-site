@@ -9,6 +9,7 @@ import {
   fmtMoney,
   type Option,
   optionLabel,
+  setupLabel,
   shortModel,
   type Traffic,
   workloadLabel,
@@ -106,12 +107,12 @@ export function Calculator({ cost }: { cost: CostData }) {
     return options
       .filter((o): o is Extract<Option, { kind: "hosted" }> => o.kind === "hosted")
       .filter((o) => {
-        const k = o.dep.precision;
+        const k = `${o.dep.precision}-${o.dep.variant ?? ""}`;
         if (seen.has(k)) return false;
         seen.add(k);
         return true;
       })
-      .map((o) => ({ label: `${o.dep.gpu_type} ${o.dep.precision.toUpperCase()} · ${o.offer.provider}`, dep: o.dep, offer: o.offer }));
+      .map((o) => ({ label: `${o.dep.gpu_type} ${setupLabel(o.dep.precision, o.dep.variant)} · ${o.offer.provider}`, dep: o.dep, offer: o.offer }));
   }, [options]);
   const apiLines = useMemo(
     () =>

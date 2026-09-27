@@ -8,7 +8,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { ExperimentCost } from "@/components/ExperimentCost";
 import { FingerprintTable } from "@/components/Fingerprint";
 import { REPOS } from "@/content/links";
-import { workloadLabel } from "@/lib/cost";
+import { setupLabel, workloadLabel } from "@/lib/cost";
 import { loadCost, loadCostAtRun, loadExperiment, loadExperiments, loadRuns } from "@/lib/data";
 import { fmtMs } from "@/lib/format";
 
@@ -106,7 +106,7 @@ export default async function ExperimentPage({ params }: PageProps<"/experiments
             value={engine ? `vLLM ${engine.engine_version}${engine.engine_image_digest ? ` (${engine.engine_image_digest.split("@")[1]?.slice(0, 19)}…)` : ""}` : "vLLM 0.30.0 (pinned image)"}
           />
           {exp.models.map((m) => (
-            <Meta key={m.precision} label={`Model · ${m.precision.toUpperCase()}`} value={m.checkpoint} href={`https://huggingface.co/${m.checkpoint}`} />
+            <Meta key={`${m.precision}-${m.variant ?? ""}`} label={`Model · ${setupLabel(m.precision, m.variant)}`} value={m.checkpoint} href={`https://huggingface.co/${m.checkpoint}`} />
           ))}
         </dl>
       </Card>
@@ -230,7 +230,7 @@ export default async function ExperimentPage({ params }: PageProps<"/experiments
                 {runs.flatMap((r) =>
                   (r.quality ?? []).map((q) => (
                     <tr key={r.run_id + q.workload} className="border-b border-line last:border-0">
-                      <td className="py-2 pl-5 font-medium">{r.model.precision.toUpperCase()} · {workloadLabel(q.workload)}</td>
+                      <td className="py-2 pl-5 font-medium">{setupLabel(r.model.precision, r.model.variant)} · {workloadLabel(q.workload)}</td>
                       <td className="px-3 text-right">{q.recall_accuracy == null ? "–" : `${(q.recall_accuracy * 100).toFixed(0)}% of ${q.recall_n}`}</td>
                       <td className="px-3 text-right">{q.recall_exact == null ? "–" : `${(q.recall_exact * 100).toFixed(0)}%`}</td>
                       <td className="pr-5 text-right">{q.drift_tool_call_rate == null ? "–" : `${(q.drift_tool_call_rate * 100).toFixed(0)}% of ${q.drift_n}`}</td>

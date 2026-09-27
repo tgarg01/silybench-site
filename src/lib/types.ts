@@ -40,6 +40,10 @@ export interface PerfPoint {
   usd_per_1m_output_tokens: number | null;
   max_gpu_temp_c?: number | null;
   thermal_throttle_fraction?: number | null;
+  /** Multi-turn session workloads only. */
+  prefix_cache_hit_rate?: number | null;
+  ttft_first_turn_p95_ms?: number | null;
+  ttft_later_turns_p99_ms?: number | null;
   slo_pass: boolean;
 }
 
@@ -99,6 +103,8 @@ export interface RunResult {
     checkpoint?: string | null;
     revision: string;
     precision: string;
+    /** Serving variant of the precision (e.g. "mtp", "pc"); null for the plain setup. */
+    variant?: string | null;
     max_model_len: number;
     thinking: boolean;
   };
@@ -213,7 +219,7 @@ export interface Experiment {
   assets: RawAsset[];
   datasets: ExperimentDataset[];
   has_prices_at_run: boolean;
-  models: { hf_id: string; precision: string; checkpoint: string; max_model_len: number }[];
+  models: { hf_id: string; precision: string; variant?: string | null; checkpoint: string; max_model_len: number }[];
   scenarios: {
     name: string;
     input_len: number;
@@ -271,6 +277,7 @@ export interface Deployment {
   experiment: string | null;
   model: string;
   precision: string;
+  variant?: string | null;
   gpu_type: string;
   gpu_count: number;
   engine_version: string | null;
@@ -308,6 +315,7 @@ export interface Comparison {
   hosted: {
     run_id: string;
     precision: string;
+    variant?: string | null;
     gpu_type: string;
     gpu_count: number;
     provider: string;

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { Card, PageHeader, TH } from "@/components/Card";
 import { SampleBanner } from "@/components/SampleBanner";
+import { setupLabel } from "@/lib/cost";
 import { loadRun, loadRuns } from "@/lib/data";
 import {
   fmtInt,
@@ -62,7 +63,7 @@ export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
       <Card title="Configuration">
         <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Meta label="Model" value={`${run.model.hf_id} @ ${run.model.revision.slice(0, 12)}`} />
-          <Meta label="Precision" value={run.model.precision.toUpperCase()} />
+          <Meta label="Precision" value={setupLabel(run.model.precision, run.model.variant)} />
           <Meta label="Max model length" value={fmtInt(run.model.max_model_len)} />
           <Meta label="Thinking mode" value={run.model.thinking ? "On" : "Off"} />
           <Meta
@@ -90,6 +91,9 @@ export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
       {workloads.map((w) => {
         const cap = run.capacity.find((c) => c.workload === w);
         const points = run.perf.filter((p) => p.workload === w).sort((a, b) => a.concurrency - b.concurrency);
+        // Multi-turn agent sessions: first-turn vs later-turn TTFT and prefix-cache hit rate.
+        const turns = points.some((p) => p.ttft_first_turn_p95_ms != null);
+        const hits = points.some((p) => p.prefix_cache_hit_rate != null);
         return (
           <Card
             key={w}
@@ -111,6 +115,9 @@ export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
                     <th className={th}>Users</th>
                     <th className={th}>TTFT p95</th>
                     <th className={th}>TTFT p99</th>
+                    {turns && <th className={th}>Turn 1 TTFT p95</th>}
+                    {turns && <th className={th}>Later turns TTFT p99</th>}
+                    {hits && <th className={th}>Cache hits</th>}
                     <th className={th}>Inter-token median</th>
                     <th className={th}>Inter-token p95</th>
                     <th className={th}>Inter-token p99</th>
@@ -130,6 +137,9 @@ export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
                       <td className={`${td} font-medium`}>{p.concurrency}</td>
                       <td className={td}>{fmtMs(p.ttft_ms.p95)}</td>
                       <td className={td}>{fmtMs(p.ttft_ms.p99)}</td>
+                      {turns && <td className={td}>{fmtMs(p.ttft_first_turn_p95_ms ?? null)}</td>}
+                      {turns && <td className={td}>{fmtMs(p.ttft_later_turns_p99_ms ?? null)}</td>}
+                      {hits && <td className={td}>{fmtPct(p.prefix_cache_hit_rate ?? null)}</td>}
                       <td className={`${td} font-medium`}>{fmtMs(p.itl_ms.median)}</td>
                       <td className={td}>{fmtMs(p.itl_ms.p95)}</td>
                       <td className={td}>{fmtMs(p.itl_ms.p99)}</td>

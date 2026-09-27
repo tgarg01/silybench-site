@@ -41,7 +41,7 @@ export default function Experiments() {
               <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-muted">
                 <span>{env.provider.toUpperCase()} {env.machine_type}</span>
                 <span>{e.scenarios.length} scenarios</span>
-                <span>{e.models.map((m) => m.precision.toUpperCase()).join(" + ")}</span>
+                <span>{Array.from(new Set(e.models.map((m) => m.precision.toUpperCase()))).join(" + ")}</span>
                 <span>{e.runs.length ? `${e.runs.length} runs` : "not measured yet"}</span>
               </div>
             </Link>

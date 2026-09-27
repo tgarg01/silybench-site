@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { apiSide, fmtCompact, fmtMoney, shortModel, workloadLabel, workloadOrder } from "@/lib/cost";
+import { apiSide, fmtCompact, fmtMoney, setupLabel, shortModel, workloadLabel, workloadOrder } from "@/lib/cost";
 import { useLivePrices } from "@/lib/livePrices";
 import type { CostData } from "@/lib/types";
 
@@ -68,7 +68,7 @@ export function CostOverview({ cost }: { cost: CostData }) {
       .flatMap((d) => {
         const offer = [...d.offers].sort((a, b) => a.usd_per_hour - b.usd_per_hour)[0];
         return offer
-          ? [{ label: `${d.gpu_count}× ${d.gpu_type} ${d.precision.toUpperCase()} · ${offer.provider} $${offer.usd_per_hour.toFixed(2)}/h`, dep: d, offer }]
+          ? [{ label: `${d.gpu_count}× ${d.gpu_type} ${setupLabel(d.precision, d.variant)} · ${offer.provider} $${offer.usd_per_hour.toFixed(2)}/h`, dep: d, offer }]
           : [];
       });
   const side = comp ? apiSide(comp, prices.offers) : null;
@@ -102,7 +102,7 @@ export function CostOverview({ cost }: { cost: CostData }) {
         <Tile
           label="Self-hosted, per 1M requests"
           value={fmtMoney(perM(h.usd_per_1k_requests))}
-          note={`${h.gpu_count}× ${h.gpu_type} ${h.precision.toUpperCase()} on ${h.provider} at $${h.usd_per_hour.toFixed(2)}/h, kept busy at its latency limit (${lowerBound ? "≥ " : ""}${h.max_users_slo} users${lowerBound ? ", the most tested, so a conservative figure" : ""})`}
+          note={`${h.gpu_count}× ${h.gpu_type} ${setupLabel(h.precision, h.variant)} on ${h.provider} at $${h.usd_per_hour.toFixed(2)}/h, kept busy at its latency limit (${lowerBound ? "≥ " : ""}${h.max_users_slo} users${lowerBound ? ", the most tested, so a conservative figure" : ""})`}
         />
         <Tile
           label="Cheapest API, per 1M requests"
@@ -156,7 +156,7 @@ export function CostOverview({ cost }: { cost: CostData }) {
                     <div className="text-xs text-muted">{c.input_len} in → {c.output_len} out</div>
                   </td>
                   <td className="px-3 text-ink-2">
-                    {c.hosted.gpu_type} {c.hosted.precision.toUpperCase()} · {c.hosted.provider}
+                    {c.hosted.gpu_type} {setupLabel(c.hosted.precision, c.hosted.variant)} · {c.hosted.provider}
                   </td>
                   <td className="px-3 text-right">{fmtMoney(perM(c.hosted.usd_per_1k_requests))}</td>
                   <td className="px-3 text-right">

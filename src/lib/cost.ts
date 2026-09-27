@@ -8,6 +8,7 @@ export const DAYS_PER_MONTH = HOURS_PER_MONTH / 24;
 
 export const WORKLOAD_LABELS: Record<string, string> = {
   "toolcall-100k-512": "Tool calling, 100k context",
+  "agent-sessions-100k": "Agent sessions, 100k (10 turns)",
   "chat-128-128": "Short chat",
   "prefill-1024-128": "RAG / long prompt, short answer",
   "decode-128-1024": "Short prompt, long answer",
@@ -21,6 +22,18 @@ export function workloadOrder(a: string, b: string): number {
   const ia = keys.indexOf(a) === -1 ? 99 : keys.indexOf(a);
   const ib = keys.indexOf(b) === -1 ? 99 : keys.indexOf(b);
   return ia - ib || a.localeCompare(b);
+}
+
+const VARIANT_LABELS: Record<string, string> = {
+  mtp: "MTP",
+  pc: "prefix cache",
+  "mtp-pc": "MTP + prefix cache",
+};
+
+/** "FP8", or "FP8 + MTP" for a serving variant of that precision. */
+export function setupLabel(precision: string, variant?: string | null): string {
+  const p = precision.toUpperCase();
+  return variant ? `${p} + ${VARIANT_LABELS[variant] ?? variant}` : p;
 }
 
 export function workloadLabel(w: string): string {
@@ -126,7 +139,7 @@ export function optionLabel(o: Option): string {
   if (o.kind === "api") return `${o.offer.provider} API`;
   const { dep, offer, machines } = o;
   const n = machines * dep.gpu_count;
-  return `${n}× ${dep.gpu_type} · ${offer.provider}${offer.product ? ` (${offer.product})` : ""} · ${dep.precision.toUpperCase()}`;
+  return `${n}× ${dep.gpu_type} · ${offer.provider}${offer.product ? ` (${offer.product})` : ""} · ${setupLabel(dep.precision, dep.variant)}`;
 }
 
 const usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
